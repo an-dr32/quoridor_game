@@ -156,11 +156,8 @@
 
     <footer class="site-footer">
       <p>
-        <a
-          href="https://github.com/an-dr32/nuclear_chicken_game.git"
-          target="_blank"
-        >
-          https://github.com/an-dr32/nuclear_chicken_game.git
+        <a href="https://github.com/an-dr32/quoridor_game.git" target="_blank">
+          https://github.com/an-dr32/quoridor_game.git
         </a>
         <br />
         <span class="made-by">Made by: Andres DM AKA L0gg3r</span>
@@ -195,6 +192,7 @@
           this.load.audio("bgMusic7", "assets/sounds/bgSoundtrack7.mp3");
           this.load.audio("bgMusic8", "assets/sounds/bgSoundtrack8.mp3");
 
+          this.load.audio("moveSound", "assets/sounds/movement.mp3");
           this.load.audio("victorySound", "assets/sounds/victory.mp3");
         }
 
@@ -292,8 +290,8 @@
             { x: 4, y: 0, sprite: null },
             { x: 4, y: 8, sprite: null },
           ];
-          this.wallColors = [0x00ff00, 0xff0000];
-          this.highlightColors = [0x228822, 0xaa2222];
+          this.wallColors = [0xdfff00, 0xff007f];     //<-- Player's Colors -->
+          this.highlightColors = [0xcae038, 0xfffbddd];   //<-- Movement's Colors -->
 
           this.drawGrid();
           this.drawPawns();
@@ -434,7 +432,7 @@
                 CELL_SIZE,
                 0x2d2d2d
               );
-              rect.setStrokeStyle(2, 0xffffff);
+              rect.setStrokeStyle(2, 0x7df9ff);  //<-- Light blue outline -->
               rect.setInteractive();
               rect.gridX = x;
               rect.gridY = y;
