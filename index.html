@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quoridor Phaser Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        background-size: cover;
+        padding: 0;
+        background: #000;
+        font-family: Consolas, monospace;
+        color: white;
+        min-height: 100vh;
+        display: grid;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: url("assets/images/city.jpg") no-repeat center bottom;
+        background-size: cover;
+        filter: blur(8px);
+        z-index: -2;
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.4); /* optional blue tint overlay */
+        z-index: -1;
+      }
+
+      /* Header title */
+      header {
+        text-align: center;
+        font-family: Consolas, monospace bolder;
+        margin-bottom: -120px;
+        margin-top: -150px;
+        color: #00ffcc;
+        font-size: 2.5rem;
+      }
+
+      .logo {
+        background: url("assets/ui/favicon.png") no-repeat center center;
+        background-size: contain;
+        width: 500px;
+        height: 500px;
+        text-indent: -9999px;
+        overflow: hidden;
+        white-space: nowrap;
+        margin: 0 auto; /* center block element */
+        display: block;
+      }
+
+      /* Layout between canvas and instructions */
+      .layout {
+        display: flex;
+        flex-grow: 1;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 40px;
+        padding: 20px;
+        flex-wrap: wrap;
+      }
+
+      /* Canvas area */
+      .canvas-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* Phaser canvas style */
+      canvas {
+        box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6);
+        background: #000000ac;
+        padding: 18px;
+        border-radius: 8px;
+      }
+      #turnIndicator {
+        color: white;
+        font-family: sans-serif;
+        font-size: 20px;
+        padding: 10px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        background-color: rgba(0, 0, 0, 0.5);
+        white-space: pre-line;
+      }
+      #instructions {
+        color: white;
+        font-family: sans-serif;
+        font-size: 16px;
+        padding: 10px;
+        position: absolute;
+        top: 0;
+        right: 0;
+        z-index: 1;
+        background-color: rgba(0, 0, 0, 0.5);
+        white-space: pre-line;
+        max-width: 250px;
+      }
+
+      .site-footer {
+        text-align: center;
+        padding: 2px;
+        font-size: 14px;
+        color: #aeaeae;
+        background-color: #0000006f; /* optional light background */
+        border-top: 1px solid #343030; /* optional top border */
+      }
+
+      .site-footer a {
+        color: #007acc; /* or whatever color fits your theme */
+        text-decoration: none;
+      }
+
+      .site-footer a:hover {
+        text-decoration: underline;
+      }
+
+      .made-by {
+        display: inline-block;
+        margin-top: 4px; /* Adjust spacing here */
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 class="logo">Nuclear Chick-EN</h1>
+    </header>
+    <div id="turnIndicator">Current Turn: Player 1</div>
+    <div id="instructions">
+      Instructions: - Click a cell to move. - Press "W" to enter wall placement
+      mode. - Press "V" to switch wall orientation. - Click a wall position to
+      place it.
+    </div>
+
+    <section class="canvas-wrapper">
+      <div id="game-container"></div>
+    </section>
+
+    <footer class="site-footer">
+      <p>
+        <a
+          href="https://github.com/an-dr32/nuclear_chicken_game.git"
+          target="_blank"
+        >
+          https://github.com/an-dr32/nuclear_chicken_game.git
+        </a>
+        <br />
+        <span class="made-by">Made by: Andres DM AKA L0gg3r</span>
+      </p>
+    </footer>
+
+    <script>
+      const GRID_SIZE = 9;
+      const CELL_SIZE = 64;
+      const WALL_THICKNESS = 10;
+      const MAX_WALLS = 10;
+
+      let bgMusic = null;
+      let menuIntroMusic = null;
+      let allTracks = [];
+      let currentTrackIndex = 0;
+      let musicMuted = false;
+
+      class QuoridorScene extends Phaser.Scene {
+        constructor() {
+          super("QuoridorScene");
+        }
+
+        preload() {
+          // Soundtrack Music
+          this.load.audio("bgMusic", "assets/sounds/bgSoundtrack1.mp3");
+          this.load.audio("bgMusic2", "assets/sounds/bgSoundtrack2.mp3");
+          this.load.audio("bgMusic3", "assets/sounds/bgSoundtrack3.mp3");
+          this.load.audio("bgMusic4", "assets/sounds/bgSoundtrack4.mp3");
+          this.load.audio("bgMusic5", "assets/sounds/bgSoundtrack5.mp3");
+          this.load.audio("bgMusic6", "assets/sounds/bgSoundtrack6.mp3");
+          this.load.audio("bgMusic7", "assets/sounds/bgSoundtrack7.mp3");
+          this.load.audio("bgMusic8", "assets/sounds/bgSoundtrack8.mp3");
+
+          this.load.audio("victorySound", "assets/sounds/victory.mp3");
+        }
+
+        create() {
+          // Background music setup
+          allTracks = [
+            { key: "bgMusic", name: "Cutesy Fartsy Eggsy!" },
+            { key: "bgMusic2", name: "If Kirby Had Eggs" },
+            { key: "bgMusic3", name: "ZZ Rost" },
+            { key: "bgMusic4", name: "EggCDC" },
+            { key: "bgMusic5", name: "RoosterVania" },
+            { key: "bgMusic6", name: "Polkasroostinski" },
+            { key: "bgMusic7", name: "Kinda Animeish... PocPooc!!!" },
+            { key: "bgMusic8", name: "For The Chicks" },
+          ];
+
+          const savedIndex = localStorage.getItem("selectedTrackIndex");
+          currentTrackIndex = savedIndex !== null ? parseInt(savedIndex) : 0;
+
+          const savedMuted = localStorage.getItem("musicMuted");
+          musicMuted = savedMuted === "true";
+
+          const selectedTrack = allTracks[currentTrackIndex] || {
+            key: "bgMusic",
+            name: "Default Track",
+          };
+
+          bgMusic = this.sound.add(selectedTrack.key, {
+            loop: true,
+            volume: musicMuted ? 0 : 1,
+          });
+          bgMusic.play();
+
+          // Track label in the center of canvas
+          const centerX = this.cameras.main.width / 2;
+          const centerY = this.cameras.main.height / 2;
+
+          this.trackLabel = this.add
+            .text(centerX, centerY, selectedTrack.name, {
+              fontSize: "14px",
+              fill: "#aaa",
+              backgroundColor: "#00000088",
+              padding: { x: 10, y: 5 },
+            })
+            .setOrigin(0.5)
+            .setVisible(false)
+            .setAlpha(0)
+            .setDepth(100);
+
+          this.input.keyboard.on("keydown-P", () => {
+            // Cycle track
+            currentTrackIndex = (currentTrackIndex + 1) % allTracks.length;
+            localStorage.setItem("selectedTrackIndex", currentTrackIndex);
+
+            if (bgMusic) {
+              bgMusic.stop();
+              bgMusic.destroy();
+              bgMusic = null;
+            }
+
+            const nextTrack = allTracks[currentTrackIndex];
+            bgMusic = this.sound.add(nextTrack.key, {
+              loop: true,
+              volume: musicMuted ? 0 : 1,
+            });
+            bgMusic.play();
+
+            this.showTrackLabel(nextTrack.name);
+          });
+
+          this.input.keyboard.on("keydown-M", () => {
+            musicMuted = !musicMuted;
+            localStorage.setItem("musicMuted", musicMuted);
+
+            if (bgMusic) {
+              bgMusic.setVolume(musicMuted ? 0 : 1);
+            }
+
+            if (menuIntroMusic) {
+              menuIntroMusic.setVolume(musicMuted ? 0 : 1);
+            }
+          });
+
+          // Game setup
+          this.grid = [];
+          this.gridHighlights = [];
+          this.currentPlayer = 0;
+          this.wallMode = false;
+          this.wallOrientation = "H";
+          this.walls = [];
+          this.wallMap = new Set();
+          this.wallCounts = [MAX_WALLS, MAX_WALLS];
+          this.ghostWall = null;
+          this.pawns = [
+            { x: 4, y: 0, sprite: null },
+            { x: 4, y: 8, sprite: null },
+          ];
+          this.wallColors = [0x00ff00, 0xff0000];
+          this.highlightColors = [0x228822, 0xaa2222];
+
+          this.drawGrid();
+          this.drawPawns();
+          this.updateTurnIndicator();
+          this.highlightMovableCells();
+
+          this.input.on("gameobjectdown", this.handleClick, this);
+
+          this.input.keyboard.on("keydown-W", () => {
+            if (this.wallMode) {
+              this.wallMode = false;
+              if (this.ghostWall) {
+                this.ghostWall.destroy();
+                this.ghostWall = null;
+              }
+              this.highlightMovableCells();
+            } else if (this.wallCounts[this.currentPlayer] > 0) {
+              this.wallMode = true;
+              this.clearHighlights();
+            }
+            this.updateTurnIndicator();
+          });
+
+          this.input.keyboard.on("keydown-V", () => {
+            if (this.wallMode) {
+              this.wallOrientation = this.wallOrientation === "H" ? "V" : "H";
+              this.updateTurnIndicator();
+            }
+          });
+
+          this.input.on("pointermove", (pointer) => {
+            if (!this.wallMode) {
+              if (this.ghostWall) {
+                this.ghostWall.destroy();
+                this.ghostWall = null;
+              }
+              return;
+            }
+
+            const x = Math.floor(pointer.x / CELL_SIZE);
+            const y = Math.floor(pointer.y / CELL_SIZE);
+
+            const key = `${x},${y},${this.wallOrientation}`;
+            const adjacentKey =
+              this.wallOrientation === "H"
+                ? `${x + 1},${y},H`
+                : `${x},${y + 1},V`;
+
+            if (
+              x < 0 ||
+              y < 0 ||
+              x >= GRID_SIZE - 1 ||
+              y >= GRID_SIZE - 1 ||
+              this.wallMap.has(key) ||
+              this.wallMap.has(adjacentKey)
+            ) {
+              if (this.ghostWall) {
+                this.ghostWall.setAlpha(0);
+              }
+              return;
+            }
+
+            if (!this.ghostWall) {
+              this.ghostWall = this.add.rectangle(
+                0,
+                0,
+                0,
+                0,
+                this.wallColors[this.currentPlayer]
+              );
+              this.ghostWall.setAlpha(0.4);
+            }
+
+            if (this.wallOrientation === "H") {
+              this.ghostWall.setSize(CELL_SIZE * 2, WALL_THICKNESS);
+              this.ghostWall.setPosition(
+                x * CELL_SIZE + CELL_SIZE,
+                y * CELL_SIZE + CELL_SIZE - WALL_THICKNESS / 2
+              );
+            } else {
+              this.ghostWall.setSize(WALL_THICKNESS, CELL_SIZE * 2);
+              this.ghostWall.setPosition(
+                x * CELL_SIZE + CELL_SIZE - WALL_THICKNESS / 2,
+                y * CELL_SIZE + CELL_SIZE
+              );
+            }
+
+            this.ghostWall.setFillStyle(this.wallColors[this.currentPlayer]);
+            this.ghostWall.setAlpha(0.4);
+          });
+
+          // Mark game as started
+          this.gameStarted = true;
+        }
+
+        showTrackLabel(name) {
+          if (!this.trackLabel) return;
+
+          const centerX = this.cameras.main.width / 2;
+
+          this.trackLabel.setText(`Track: ${name}`);
+          this.trackLabel.setAlpha(1);
+          this.trackLabel.setVisible(true);
+          this.trackLabel.x = centerX;
+
+          // Cancel any existing tween to avoid stacking
+          if (this.trackLabelFade) {
+            this.trackLabelFade.remove();
+          }
+
+          // Start fade out with vibration after delay
+          this.trackLabelFade = this.time.delayedCall(3000, () => {
+            this.tweens.add({
+              targets: this.trackLabel,
+              alpha: 0,
+              duration: 800,
+              ease: "Sine.easeInOut",
+              onUpdate: (tween, target) => {
+                target.x =
+                  centerX + Math.sin(tween.progress * Math.PI * 12) * 4;
+              },
+              onComplete: (tween, targets) => {
+                targets[0].setVisible(false);
+                targets[0].x = centerX;
+              },
+            });
+          });
+        }
+
+        drawGrid() {
+          for (let y = 0; y < GRID_SIZE; y++) {
+            this.grid[y] = [];
+            for (let x = 0; x < GRID_SIZE; x++) {
+              let rect = this.add.rectangle(
+                x * CELL_SIZE + CELL_SIZE / 2,
+                y * CELL_SIZE + CELL_SIZE / 2,
+                CELL_SIZE,
+                CELL_SIZE,
+                0x2d2d2d
+              );
+              rect.setStrokeStyle(2, 0xffffff);
+              rect.setInteractive();
+              rect.gridX = x;
+              rect.gridY = y;
+              this.grid[y][x] = rect;
+            }
+          }
+        }
+
+        drawPawns() {
+          this.pawns.forEach((pawn, index) => {
+            pawn.sprite = this.add.circle(
+              pawn.x * CELL_SIZE + CELL_SIZE / 2,
+              pawn.y * CELL_SIZE + CELL_SIZE / 2,
+              20,
+              this.wallColors[index]
+            );
+          });
+        }
+
+        clearHighlights() {
+          this.gridHighlights.forEach((r) => r.setFillStyle(0x2d2d2d));
+          this.gridHighlights = [];
+        }
+
+        highlightMovableCells() {
+          this.clearHighlights();
+          const p = this.pawns[this.currentPlayer];
+          const o = this.pawns[1 - this.currentPlayer];
+          const dirs = [
+            { dx: 1, dy: 0 },
+            { dx: -1, dy: 0 },
+            { dx: 0, dy: 1 },
+            { dx: 0, dy: -1 },
+          ];
+
+          for (const dir of dirs) {
+            const nx = p.x + dir.dx,
+              ny = p.y + dir.dy;
+            if (nx < 0 || ny < 0 || nx >= GRID_SIZE || ny >= GRID_SIZE)
+              continue;
+            if (this.isWallBetween(p.x, p.y, nx, ny)) continue;
+
+            if (nx === o.x && ny === o.y) {
+              const jx = o.x + dir.dx,
+                jy = o.y + dir.dy;
+              console.log(
+                `\n[JUMP TRY] from (${p.x},${p.y}) over (${o.x},${o.y}) to (${jx},${jy})`
+              );
+              const block1 = this.isWallBetween(p.x, p.y, o.x, o.y);
+              const block2 = this.isWallBetween(o.x, o.y, jx, jy);
+              console.log(
+                `  walls? first segment: ${block1}, second: ${block2}`
+              );
+              if (
+                jx >= 0 &&
+                jy >= 0 &&
+                jx < GRID_SIZE &&
+                jy < GRID_SIZE &&
+                !block1 &&
+                !block2
+              ) {
+                this.grid[jy][jx].setFillStyle(
+                  this.highlightColors[this.currentPlayer]
+                );
+                this.gridHighlights.push(this.grid[jy][jx]);
+              }
+              // …sidesteps omitted for clarity…
+            } else {
+              this.grid[ny][nx].setFillStyle(
+                this.highlightColors[this.currentPlayer]
+              );
+              this.gridHighlights.push(this.grid[ny][nx]);
+            }
+          }
+        }
+
+        handleClick(pointer, gameObject) {
+          const targetX = gameObject.gridX;
+          const targetY = gameObject.gridY;
+
+          const otherPlayer = this.pawns[1 - this.currentPlayer];
+          if (otherPlayer.x === targetX && otherPlayer.y === targetY) {
+            return; // Cannot move onto the opponent's cell
+          }
+
+          if (this.wallMode) {
+            const placed = this.placeWall(targetX, targetY);
+            if (placed) {
+              this.wallMode = false;
+              this.currentPlayer = 1 - this.currentPlayer;
+              this.updateTurnIndicator();
+              this.highlightMovableCells();
+            }
+            return;
+          }
+
+          const player = this.pawns[this.currentPlayer];
+
+          // Only allow moving to highlighted cells
+          const isHighlighted = this.gridHighlights.includes(gameObject);
+          if (!isHighlighted) return;
+
+          // Prevent moving if there's a wall in the path
+          if (this.isWallBetween(player.x, player.y, targetX, targetY)) return;
+
+          // Move is valid — update position
+          player.x = targetX;
+          player.y = targetY;
+          player.sprite.setPosition(
+            targetX * CELL_SIZE + CELL_SIZE / 2,
+            targetY * CELL_SIZE + CELL_SIZE / 2
+          );
+
+          // Check for victory
+          if (
+            (this.currentPlayer === 0 && targetY === GRID_SIZE - 1) ||
+            (this.currentPlayer === 1 && targetY === 0)
+          ) {
+            this.showVictory(this.currentPlayer + 1);
+            return;
+          }
+
+          this.currentPlayer = 1 - this.currentPlayer;
+          this.wallMode = false;
+          this.updateTurnIndicator();
+          this.highlightMovableCells();
+        }
+
+        isLegalWallPlacement(key, adjacentKey) {
+          // Temporarily add the wall
+          this.wallMap.add(key);
+          this.wallMap.add(adjacentKey);
+
+          const p1 = this.pawns[0];
+          const p2 = this.pawns[1];
+
+          const p1CanReach = this.hasPathToGoal(p1.x, p1.y, GRID_SIZE - 1);
+          const p2CanReach = this.hasPathToGoal(p2.x, p2.y, 0);
+
+          // Remove simulated wall
+          this.wallMap.delete(key);
+          this.wallMap.delete(adjacentKey);
+
+          return p1CanReach && p2CanReach;
+        }
+
+        hasPathToGoal(startX, startY, goalY) {
+          const visited = new Set();
+          const queue = [[startX, startY]];
+
+          while (queue.length > 0) {
+            const [x, y] = queue.shift();
+            const key = `${x},${y}`;
+            if (visited.has(key)) continue;
+            visited.add(key);
+
+            if (y === goalY) return true;
+
+            const directions = [
+              { dx: 1, dy: 0 },
+              { dx: -1, dy: 0 },
+              { dx: 0, dy: 1 },
+              { dx: 0, dy: -1 },
+            ];
+
+            for (const dir of directions) {
+              const nx = x + dir.dx;
+              const ny = y + dir.dy;
+
+              const wallKey =
+                dir.dx !== 0
+                  ? `${Math.min(x, nx)},${y},V`
+                  : `${x},${Math.min(y, ny)},H`;
+
+              if (
+                nx >= 0 &&
+                ny >= 0 &&
+                nx < GRID_SIZE &&
+                ny < GRID_SIZE &&
+                !this.wallMap.has(wallKey)
+              ) {
+                queue.push([nx, ny]);
+              }
+            }
+          }
+
+          return false;
+        }
+
+        placeWall(x, y) {
+          if (this.wallCounts[this.currentPlayer] <= 0) return false;
+
+          const key = `${x},${y},${this.wallOrientation}`;
+          const adjacentKey =
+            this.wallOrientation === "H"
+              ? `${x + 1},${y},H`
+              : `${x},${y + 1},V`;
+
+          if (this.wallMap.has(key) || this.wallMap.has(adjacentKey))
+            return false;
+
+          if (
+            (this.wallOrientation === "H" &&
+              (x >= GRID_SIZE - 1 || y >= GRID_SIZE - 1)) ||
+            (this.wallOrientation === "V" &&
+              (x >= GRID_SIZE - 1 || y >= GRID_SIZE - 1))
+          )
+            return false;
+
+          // --- PATHFINDING SAFEGUARD ---
+          if (!this.isLegalWallPlacement(key, adjacentKey)) {
+            return false;
+          }
+
+          // --- Continue only if path is legal ---
+          // **Register the wall so movement checks block it**
+          this.wallMap.add(key);
+          this.wallMap.add(adjacentKey);
+
+          // Visual wall placement
+          let wall = null;
+          const color = this.wallColors[this.currentPlayer];
+          if (this.wallOrientation === "H") {
+            wall = this.add.rectangle(
+              x * CELL_SIZE + CELL_SIZE,
+              y * CELL_SIZE + CELL_SIZE - WALL_THICKNESS / 2,
+              CELL_SIZE * 2,
+              WALL_THICKNESS,
+              color
+            );
+          } else {
+            wall = this.add.rectangle(
+              x * CELL_SIZE + CELL_SIZE - WALL_THICKNESS / 2,
+              y * CELL_SIZE + CELL_SIZE,
+              WALL_THICKNESS,
+              CELL_SIZE * 2,
+              color
+            );
+          }
+
+          this.walls.push(wall);
+          this.wallCounts[this.currentPlayer]--;
+          return true;
+        }
+
+        isWallBetween(x1, y1, x2, y2) {
+          console.log(
+            `isWallBetween: (${x1},${y1}) → (${x2},${y2}) checking keys…`
+          );
+
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+
+          // Horizontal move
+          if (dx === 1 && dy === 0) return this.wallMap.has(`${x1},${y1},V`);
+          if (dx === -1 && dy === 0) return this.wallMap.has(`${x2},${y2},V`);
+
+          // Vertical move
+          if (dx === 0 && dy === 1) return this.wallMap.has(`${x1},${y1},H`);
+          if (dx === 0 && dy === -1) return this.wallMap.has(`${x2},${y2},H`);
+
+          // Horizontal jump
+          if (dx === 2 && dy === 0)
+            return (
+              this.wallMap.has(`${x1},${y1},V`) ||
+              this.wallMap.has(`${x1 + 1},${y1},V`)
+            );
+          if (dx === -2 && dy === 0)
+            return (
+              this.wallMap.has(`${x2},${y2},V`) ||
+              this.wallMap.has(`${x2 + 1},${y2},V`)
+            );
+
+          // Vertical jump
+          if (dx === 0 && dy === 2)
+            return (
+              this.wallMap.has(`${x1},${y1},H`) ||
+              this.wallMap.has(`${x1},${y1 + 1},H`)
+            );
+          if (dx === 0 && dy === -2)
+            return (
+              this.wallMap.has(`${x2},${y2},H`) ||
+              this.wallMap.has(`${x2},${y2 + 1},H`)
+            );
+
+          // Diagonal moves
+          if (Math.abs(dx) === 1 && Math.abs(dy) === 1)
+            return (
+              this.wallMap.has(`${Math.min(x1, x2)},${y1},V`) ||
+              this.wallMap.has(`${x1},${Math.min(y1, y2)},H`)
+            );
+
+          return true; // block everything else
+        }
+
+        updateTurnIndicator() {
+          document.getElementById(
+            "turnIndicator"
+          ).innerText = `Current Turn: Player ${
+            this.currentPlayer + 1
+          }\nWalls left: ${this.wallCounts[this.currentPlayer]}\nWall mode: ${
+            this.wallMode ? "ON" : "OFF"
+          } (${this.wallOrientation})`;
+        }
+
+        // Show victory message modal
+        /* showVictory(player) {
+          alert(`Player ${player} wins!`);
+          location.reload();
+        } */
+
+        showVictory(player) {
+          const W = GRID_SIZE * CELL_SIZE;
+          const H = GRID_SIZE * CELL_SIZE;
+          const centerX = W / 2;
+          const centerY = H / 2;
+
+          // Stop the game music
+          if (this.music) {
+            this.music.stop();
+          }
+          // Stop any existing background music
+          if (bgMusic && bgMusic.isPlaying) {
+            bgMusic.stop();
+          }
+          // Play victory sound
+          this.victoryMusic = this.sound.add("victorySound", {
+            loop: true,
+            volume: 1,
+          });
+          this.victoryMusic.play();
+
+          // 1. Block board interaction
+          const blocker = this.add
+            .zone(centerX, centerY, W, H)
+            .setInteractive()
+            .setDepth(9);
+
+          // 2. Dark overlay
+          this.add
+            .rectangle(centerX, centerY, W, H, 0x000000, 0.6)
+            .setDepth(10);
+
+          // 3. Modal container
+          const modal = this.add.container(centerX, centerY).setDepth(11);
+          modal.setAlpha(0); // start transparent
+
+          // 4. Modal background
+          const bg = this.add
+            .rectangle(0, 0, 300, 150, 0xffffff)
+            .setStrokeStyle(4, 0x000000);
+          modal.add(bg);
+
+          // 5. Text
+          const msg = this.add
+            .text(0, -30, `Player ${player} wins!`, {
+              fontSize: "24px",
+              color: "#000000",
+              fontStyle: "bold",
+            })
+            .setOrigin(0.5);
+          modal.add(msg);
+
+          // 6. Restart button
+          const btn = this.add
+            .text(0, 30, "Restart", {
+              fontSize: "20px",
+              color: "#ffffff",
+              backgroundColor: "#007acc",
+              padding: { x: 12, y: 6 },
+            })
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true });
+          modal.add(btn);
+
+          btn.on("pointerdown", () => {
+            if (this.victoryMusic) {
+              this.victoryMusic.stop();
+              this.victoryMusic.destroy();
+              this.victoryMusic = null;
+            }
+
+            this.scene.restart();
+          });
+
+          // 7. Fade in the modal
+          this.tweens.add({
+            targets: modal,
+            alpha: 1,
+            duration: 600,
+            ease: "Power2",
+          });
+        }
+      }
+
+      const config = {
+        type: Phaser.AUTO,
+        width: GRID_SIZE * CELL_SIZE,
+        height: GRID_SIZE * CELL_SIZE,
+        parent: "game-container", // Add this line to mount canvas into the right spot
+
+        backgroundColor: "#1d1d1d",
+        scene: QuoridorScene,
+      };
+
+      //new Phaser.Game(config);
+      window.game = new Phaser.Game(config);
+    </script>
+  </body>
+</html>
