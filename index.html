@@ -193,20 +193,37 @@
           this.load.audio("bgMusic8", "assets/sounds/bgSoundtrack8.mp3");
 
           this.load.audio("moveSound", "assets/sounds/movement.mp3");
+          this.load.audio("wallSound", "assets/sounds/wall.mp3");
+          this.load.audio("invalidSound", "assets/sounds/invalid.mp3");
           this.load.audio("victorySound", "assets/sounds/victory.mp3");
         }
 
         create() {
+          this.moveSound = this.sound.add("moveSound", {
+            loop: false,
+            volume: 1,
+          });
+          this.wallSound = this.sound.add("wallSound", {
+            loop: false,
+            volume: 1,
+          });
+          this.invalidSound = this.sound.add("invalidSound", {
+            loop: false,
+            volume: 1,
+          });
+
+          this.lastInvalidTime = 0;
+
           // Background music setup
           allTracks = [
-            { key: "bgMusic", name: "Cutesy Fartsy Eggsy!" },
-            { key: "bgMusic2", name: "If Kirby Had Eggs" },
-            { key: "bgMusic3", name: "ZZ Rost" },
-            { key: "bgMusic4", name: "EggCDC" },
+            { key: "bgMusic", name: "Tronny" },
+            { key: "bgMusic2", name: "Meditations" },
+            { key: "bgMusic3", name: "ZZ Top - La Grange" },
+            { key: "bgMusic4", name: "ACDC - Shot To Thrill" },
             { key: "bgMusic5", name: "RoosterVania" },
             { key: "bgMusic6", name: "Polkasroostinski" },
             { key: "bgMusic7", name: "Kinda Animeish... PocPooc!!!" },
-            { key: "bgMusic8", name: "For The Chicks" },
+            { key: "bgMusic8", name: "Serious" },
           ];
 
           const savedIndex = localStorage.getItem("selectedTrackIndex");
@@ -290,8 +307,8 @@
             { x: 4, y: 0, sprite: null },
             { x: 4, y: 8, sprite: null },
           ];
-          this.wallColors = [0xdfff00, 0xff007f];     //<-- Player's Colors -->
-          this.highlightColors = [0xcae038, 0xfffbddd];   //<-- Movement's Colors -->
+          this.wallColors = [0xdfff00, 0xff007f]; //<-- Player's Colors -->
+          this.highlightColors = [0xcae038, 0xfffbddd]; //<-- Movement's Colors -->
 
           this.drawGrid();
           this.drawPawns();
@@ -340,14 +357,15 @@
                 ? `${x + 1},${y},H`
                 : `${x},${y + 1},V`;
 
-            if (
-              x < 0 ||
-              y < 0 ||
-              x >= GRID_SIZE - 1 ||
-              y >= GRID_SIZE - 1 ||
-              this.wallMap.has(key) ||
-              this.wallMap.has(adjacentKey)
-            ) {
+            if (x < 0 || y < 0 || x >= GRID_SIZE - 1 || y >= GRID_SIZE - 1) {
+              if (this.ghostWall) {
+                this.ghostWall.setAlpha(0);
+              }
+              return;
+            }
+
+            // Don't allow placing on top of other walls
+            if (this.wallMap.has(key) || this.wallMap.has(adjacentKey)) {
               if (this.ghostWall) {
                 this.ghostWall.setAlpha(0);
               }
@@ -362,7 +380,7 @@
                 0,
                 this.wallColors[this.currentPlayer]
               );
-              this.ghostWall.setAlpha(0.4);
+              this.ghostWall.setAlpha(0.6);
             }
 
             if (this.wallOrientation === "H") {
@@ -421,18 +439,36 @@
           });
         }
 
+        playInvalidSoundOnce() {
+          const now = this.time.now;
+          if (now - this.lastInvalidTime > 300) {
+            this.invalidSound.play();
+            this.lastInvalidTime = now;
+          }
+        }
+
         drawGrid() {
           for (let y = 0; y < GRID_SIZE; y++) {
             this.grid[y] = [];
             for (let x = 0; x < GRID_SIZE; x++) {
+              // Determine color based on row
+              let fillColor = 0x2d2d2d; // default
+              if (y === 0) fillColor = this.wallColors[1]; // Player 2's goal row
+              if (y === GRID_SIZE - 1) fillColor = this.wallColors[0]; // Player 1's goal row
+
               let rect = this.add.rectangle(
                 x * CELL_SIZE + CELL_SIZE / 2,
                 y * CELL_SIZE + CELL_SIZE / 2,
                 CELL_SIZE,
                 CELL_SIZE,
-                0x2d2d2d
+                fillColor
               );
-              rect.setStrokeStyle(2, 0x7df9ff);  //<-- Light blue outline -->
+
+              if (y === 0 || y === GRID_SIZE - 1) {
+                rect.setAlpha(0.7); // more subtle (0 = invisible, 1 = fully opaque)
+              }
+
+              rect.setStrokeStyle(2, 0x7df9ff); // Light blue outline
               rect.setInteractive();
               rect.gridX = x;
               rect.gridY = y;
@@ -453,7 +489,11 @@
         }
 
         clearHighlights() {
-          this.gridHighlights.forEach((r) => r.setFillStyle(0x2d2d2d));
+          this.gridHighlights.forEach((h) => {
+            if (h.rect && h.rect.destroy) {
+              h.rect.destroy();
+            }
+          });
           this.gridHighlights = [];
         }
 
@@ -494,59 +534,76 @@
                 !block1 &&
                 !block2
               ) {
-                this.grid[jy][jx].setFillStyle(
-                  this.highlightColors[this.currentPlayer]
+                const highlight = this.add.rectangle(
+                  jx * CELL_SIZE + CELL_SIZE / 2,
+                  jy * CELL_SIZE + CELL_SIZE / 2,
+                  CELL_SIZE,
+                  CELL_SIZE,
+                  this.highlightColors[this.currentPlayer],
+                  0.4
                 );
-                this.gridHighlights.push(this.grid[jy][jx]);
+                highlight.setDepth(1);
+                this.gridHighlights.push({ x: jx, y: jy, rect: highlight });
               }
               // …sidesteps omitted for clarity…
             } else {
-              this.grid[ny][nx].setFillStyle(
-                this.highlightColors[this.currentPlayer]
+              const highlight = this.add.rectangle(
+                nx * CELL_SIZE + CELL_SIZE / 2,
+                ny * CELL_SIZE + CELL_SIZE / 2,
+                CELL_SIZE,
+                CELL_SIZE,
+                this.highlightColors[this.currentPlayer],
+                0.4 // alpha transparency
               );
-              this.gridHighlights.push(this.grid[ny][nx]);
+              highlight.setDepth(1); // draw on top of grid
+              this.gridHighlights.push({ x: nx, y: ny, rect: highlight });
             }
           }
         }
 
         handleClick(pointer, gameObject) {
-          const targetX = gameObject.gridX;
-          const targetY = gameObject.gridY;
+          // Calculate which tile was clicked using pointer position
+          const targetX = Math.floor(pointer.x / CELL_SIZE);
+          const targetY = Math.floor(pointer.y / CELL_SIZE);
 
-          const otherPlayer = this.pawns[1 - this.currentPlayer];
-          if (otherPlayer.x === targetX && otherPlayer.y === targetY) {
-            return; // Cannot move onto the opponent's cell
-          }
-
+          // Wall placement takes priority
           if (this.wallMode) {
             const placed = this.placeWall(targetX, targetY);
-            if (placed) {
+            if (!placed) {
+              this.playInvalidSoundOnce();
+            } else {
               this.wallMode = false;
               this.currentPlayer = 1 - this.currentPlayer;
               this.updateTurnIndicator();
               this.highlightMovableCells();
+              this.wallSound.play();
             }
             return;
           }
 
+          // Make sure the clicked cell is one of the allowed movement positions
+          const isHighlighted = this.gridHighlights.some(
+            (h) => h.x === targetX && h.y === targetY
+          );
+          if (!isHighlighted) {
+            this.playInvalidSoundOnce();
+            return;
+          }
+
+          // Check if there's a wall in the way (should be unnecessary, but safe)
           const player = this.pawns[this.currentPlayer];
-
-          // Only allow moving to highlighted cells
-          const isHighlighted = this.gridHighlights.includes(gameObject);
-          if (!isHighlighted) return;
-
-          // Prevent moving if there's a wall in the path
           if (this.isWallBetween(player.x, player.y, targetX, targetY)) return;
 
-          // Move is valid — update position
+          // Valid move — update player position
           player.x = targetX;
           player.y = targetY;
           player.sprite.setPosition(
             targetX * CELL_SIZE + CELL_SIZE / 2,
             targetY * CELL_SIZE + CELL_SIZE / 2
           );
+          this.moveSound.play();
 
-          // Check for victory
+          // Victory check
           if (
             (this.currentPlayer === 0 && targetY === GRID_SIZE - 1) ||
             (this.currentPlayer === 1 && targetY === 0)
@@ -555,6 +612,7 @@
             return;
           }
 
+          // End turn
           this.currentPlayer = 1 - this.currentPlayer;
           this.wallMode = false;
           this.updateTurnIndicator();
@@ -676,6 +734,9 @@
           this.walls.push(wall);
           this.wallCounts[this.currentPlayer]--;
           return true;
+          console.log("Trying to place wall at", x, y);
+          console.log("Player 1 at:", this.pawns[0].x, this.pawns[0].y);
+          console.log("Player 2 at:", this.pawns[1].x, this.pawns[1].y);
         }
 
         isWallBetween(x1, y1, x2, y2) {
