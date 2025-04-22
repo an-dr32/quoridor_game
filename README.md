@@ -80,20 +80,20 @@ To prevent players from trapping their opponent, we simulate the wall placement,
 	
 This ensures each wall placement leaves at least one route to the opponent’s goal row.
 
-###2. Ghost Wall Previews Without Overlapping Pawns**
+### 2. Ghost Wall Previews Without Overlapping Pawns**
 Wall previews must render between cells, not on them — while avoiding overlap with existing walls and bounds:
 
 		if (this.wallMap.has(key) || this.wallMap.has(adjacentKey)) {
  			 return; // can't place overlapping or outside bounds
 		}
 		
-###3. Movement Highlight System Using Overlays**
+### 3. Movement Highlight System Using Overlays**
 Highlighting movement options without overwriting the board was tricky. We solved it by drawing semi-transparent rectangles on top of the grid and tracking valid move targets as:
 
 		{ x: number, y: number, rect: Phaser.GameObjects.Rectangle }
 This let us keep the goal row colors intact.
 
-###4. Preventing Invalid Sound Spam**
+### 4. Preventing Invalid Sound Spam**
 We used a cooldown flag + Phaser's delayedCall to avoid spamming the invalid move sound:
 
 		if (!this.invalidSoundCooldown) {
@@ -111,6 +111,9 @@ We used a cooldown flag + Phaser's delayedCall to avoid spamming the invalid mov
 		
 2. Open index.html in your browser (you can use a simple HTTP server like live-server).
 
+
+
+
 👨‍💻 Author
 Created by Andres DM AKA L0gg3r
 Feel free to contribute, remix, or build your own version!
@@ -120,4 +123,4 @@ Feel free to contribute, remix, or build your own version!
 	Because in a post-apocalyptic future, chickens play mind games with walls of radioactive metal and classical music.
 
 
-Default copyright laws, apply, meaning The owner of this repository retains all rights, to the source code and no one may reproduce, distribute, or create derivative works from this repository, without express consent.
+***Default copyright laws, apply, meaning The owner of this repository retains all rights, to the source code and no one may reproduce, distribute, or create derivative works from this repository, without express consent.***
