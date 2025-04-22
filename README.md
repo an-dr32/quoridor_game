@@ -1,4 +1,3 @@
-# quoridor_game
 # GridPath: A Quoridor Clone — A Quoridor-Inspired Phaser Game
 
 Welcome to **GridPath: A Quoridor Clone**, a digital reimagining of the classic strategy game **Quoridor**, built with [Phaser 3](https://phaser.io/phaser3) and wrapped in retro music, vibrant visuals, and challenging grid-based tactics.
@@ -119,3 +118,6 @@ Feel free to contribute, remix, or build your own version!
 🐔 Bonus Lore of my other game:
 	Why is it called Nuclear Chick-EN?
 	Because in a post-apocalyptic future, chickens play mind games with walls of radioactive metal and classical music.
+
+
+Default copyright laws, apply, meaning The owner of this repository retains all rights, to the source code and no one may reproduce, distribute, or create derivative works from this repository, without express consent.
