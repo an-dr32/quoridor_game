@@ -145,9 +145,14 @@
     </header>
     <div id="turnIndicator">Current Turn: Player 1</div>
     <div id="instructions">
-      Instructions: - Click a cell to move. - Press "W" to enter wall placement
-      mode. - Press "V" to switch wall orientation. - Click a wall position to
-      place it.
+      <div>
+        Instructions: <br />- Click a cell to move. <br />- Press "W" to enter
+        wall placement mode. <br />- Press "V" to switch wall orientation.
+        <br />
+        - Click a wall position to place it. <br />- Press "P" to change the
+        soundtrack. <br />- Press "M" to mute/unmute the music. <br />- Press
+        "ESC" to restart the game.
+      </div>
     </div>
 
     <section class="canvas-wrapper">
@@ -195,6 +200,7 @@
           this.load.audio("moveSound", "assets/sounds/movement.mp3");
           this.load.audio("wallSound", "assets/sounds/wall.mp3");
           this.load.audio("invalidSound", "assets/sounds/invalid.mp3");
+          this.load.audio("restartSound", "assets/sounds/restart.mp3");
           this.load.audio("victorySound", "assets/sounds/victory.mp3");
         }
 
@@ -211,7 +217,12 @@
             loop: false,
             volume: 1,
           });
+          this.restartSound = this.sound.add("restartSound", {
+            loop: false,
+            volume: 1,
+          });
 
+          this.invalidSoundCooldown = false;
           this.lastInvalidTime = 0;
 
           // Background music setup
@@ -237,11 +248,13 @@
             name: "Default Track",
           };
 
-          bgMusic = this.sound.add(selectedTrack.key, {
-            loop: true,
-            volume: musicMuted ? 0 : 1,
-          });
-          bgMusic.play();
+          if (!bgMusic || !bgMusic.isPlaying) {
+            bgMusic = this.sound.add(selectedTrack.key, {
+              loop: true,
+              volume: musicMuted ? 0 : 1,
+            });
+            bgMusic.play();
+          }
 
           // Track label in the center of canvas
           const centerX = this.cameras.main.width / 2;
@@ -291,6 +304,12 @@
             if (menuIntroMusic) {
               menuIntroMusic.setVolume(musicMuted ? 0 : 1);
             }
+          });
+
+          //ESC key to restart the game
+          this.input.keyboard.on("keydown-ESC", () => {
+            this.scene.restart();
+            this.restartSound.play();
           });
 
           // Game setup
@@ -440,11 +459,15 @@
         }
 
         playInvalidSoundOnce() {
-          const now = this.time.now;
-          if (now - this.lastInvalidTime > 300) {
-            this.invalidSound.play();
-            this.lastInvalidTime = now;
-          }
+          if (this.invalidSoundCooldown) return;
+
+          this.invalidSound.play();
+          this.invalidSoundCooldown = true;
+
+          // Reset cooldown after 300ms
+          this.time.delayedCall(300, () => {
+            this.invalidSoundCooldown = false;
+          });
         }
 
         drawGrid() {
