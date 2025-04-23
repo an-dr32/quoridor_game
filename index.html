@@ -1009,7 +1009,7 @@
 
           // 4. Modal background
           const bg = this.add
-            .rectangle(0, 0, 300, 150, 0xffffff)
+            .rectangle(0, 0, 300, 150, 0x000000)
             .setStrokeStyle(4, 0x000000);
           modal.add(bg);
 
@@ -1017,7 +1017,7 @@
           const msg = this.add
             .text(0, -30, `Player ${player} wins!`, {
               fontSize: "24px",
-              color: "#000000",
+              color: "#fff",
               fontStyle: "bold",
             })
             .setOrigin(0.5);
@@ -1028,7 +1028,7 @@
             .text(0, 30, "Restart", {
               fontSize: "20px",
               color: "#ffffff",
-              backgroundColor: "#007acc",
+              backgroundColor: "#32a852",
               padding: { x: 12, y: 6 },
             })
             .setOrigin(0.5)
