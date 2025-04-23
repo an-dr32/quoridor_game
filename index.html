@@ -183,12 +183,14 @@
 
       <div id="instructions">
         <div>
-          Instructions: <br />- Click a cell to move. <br />- Press "W" to enter
-          wall placement mode. <br />- Press "V" to switch wall orientation.
+          Instructions: <br />- Click on a highlighted square to move. <br />-
+          Press "W" to enter wall placement mode to prevent your enemy from
+          advancing. <br />- Press "V" to switch between horizontal and vertical
+          wall orientation.
           <br />
-          - Click a wall position to place it. <br />- Press "P" to change the
-          soundtrack. <br />- Press "M" to mute/unmute the music. <br />- Press
-          "ESC" or "R" to restart the game.
+          - Click on a highlighted wall position to place it. <br />- Press "P"
+          to change the soundtrack. <br />- Press "M" to mute/unmute the music.
+          <br />- Press "ESC" or "R" to restart the game.
         </div>
       </div>
     </div>
@@ -270,6 +272,8 @@
 
             firstLoad = false; // prevent showing logo on future non-restart scene calls
           }
+
+          this.flashTween = null; // Initialize flashTween to null
 
           this.isPointerDown = false; // Track pointer state
           this.pendingWallPlacement = null; // Track pending wall placement
@@ -456,13 +460,27 @@
               return;
             }
 
-            if (this.wallMap.has(key) || this.wallMap.has(adjacentKey)) {
-              if (this.ghostWall) this.ghostWall.setAlpha(0);
+            const isInvalid =
+              this.wallMap.has(key) || this.wallMap.has(adjacentKey);
+
+            if (isInvalid) {
+              if (!this.flashTween && this.ghostWall) {
+                this.flashTween = this.tweens.add({
+                  targets: this.ghostWall,
+                  alpha: { from: 0.2, to: 0.7 },
+                  duration: 300,
+                  yoyo: true,
+                  repeat: 2,
+                  onComplete: () => {
+                    if (this.ghostWall) this.ghostWall.setAlpha(0.4);
+                    this.flashTween = null;
+                  },
+                });
+              }
               this.pendingWallPlacement = null;
               return;
             }
 
-            // Draw ghost wall
             if (!this.ghostWall) {
               this.ghostWall = this.add.rectangle(
                 0,
@@ -472,6 +490,12 @@
                 this.wallColors[this.currentPlayer]
               );
               this.ghostWall.setAlpha(0.4);
+            }
+
+            if (this.flashTween) {
+              this.flashTween.stop();
+              this.flashTween = null;
+              if (this.ghostWall) this.ghostWall.setAlpha(0.4);
             }
 
             if (this.wallOrientation === "H") {
@@ -490,10 +514,9 @@
 
             this.ghostWall.setFillStyle(this.wallColors[this.currentPlayer]);
             this.ghostWall.setAlpha(0.4);
-
-            // Store preview coords
             this.pendingWallPlacement = { x, y };
           });
+
           this.input.on("pointerdown", (pointer) => {
             this.isPointerDown = true;
             this.touchStart = {
@@ -513,7 +536,6 @@
               this.touchStart?.y ?? 0
             );
             const tapDuration = this.time.now - (this.touchStart?.time ?? 0);
-
             const isTouchTap = tapDistance < 10 && tapDuration < 300;
 
             if (
@@ -530,7 +552,26 @@
                 this.updateTurnIndicator();
                 this.highlightMovableCells();
                 this.wallSound.play();
+              } else {
+                this.playInvalidSoundOnce();
+
+                if (!this.flashTween && this.ghostWall) {
+                  this.flashTween = this.tweens.add({
+                    targets: this.ghostWall,
+                    alpha: { from: 0.2, to: 0.7 },
+                    duration: 300,
+                    yoyo: true,
+                    repeat: 2,
+                    onComplete: () => {
+                      if (this.ghostWall) this.ghostWall.setAlpha(0.4);
+                      this.flashTween = null;
+                    },
+                  });
+                }
               }
+            } else if (this.wallMode && (this.readyToPlaceWall || isTouchTap)) {
+              // Pointer released in wall mode, but no pending placement → invalid
+              this.playInvalidSoundOnce();
             }
 
             this.pendingWallPlacement = null;
@@ -606,7 +647,7 @@
           this.invalidSoundCooldown = true;
 
           // Reset cooldown after 300ms
-          this.time.delayedCall(300, () => {
+          this.time.delayedCall(3000, () => {
             this.invalidSoundCooldown = false;
           });
         }
@@ -784,7 +825,6 @@
           this.updateTurnIndicator();
           this.highlightMovableCells();
         }
-
         isLegalWallPlacement(key, adjacentKey) {
           // Temporarily add the wall
           this.wallMap.add(key);
