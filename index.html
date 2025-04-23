@@ -187,6 +187,9 @@
         }
 
         preload() {
+          // Load images
+          this.load.image("logo", "assets/images/logo.png");
+
           // Soundtrack Music
           this.load.audio("bgMusic", "assets/sounds/bgSoundtrack1.mp3");
           this.load.audio("bgMusic2", "assets/sounds/bgSoundtrack2.mp3");
@@ -204,7 +207,28 @@
           this.load.audio("victorySound", "assets/sounds/victory.mp3");
         }
 
-        create() {
+        create(data) {
+          if (data.logoFromRestart) {
+            this.logo = this.add.image(
+              this.scale.width / 2,
+              this.scale.height / 2,
+              "logo"
+            );
+            this.logo.setDepth(100);
+            this.logo.setAlpha(1);
+            this.logo.setScale(1);
+
+            this.tweens.add({
+              targets: this.logo,
+              alpha: 0,
+              duration: 400,
+              delay: 600, // finishes fading out ~1s after restart
+              onComplete: () => {
+                this.logo.destroy();
+              },
+            });
+          }
+
           this.moveSound = this.sound.add("moveSound", {
             loop: false,
             volume: 1,
@@ -308,8 +332,32 @@
 
           //ESC key to restart the game
           this.input.keyboard.on("keydown-ESC", () => {
-            this.scene.restart();
+            // Create the splash logo BEFORE restarting
+            this.logoData = {
+              showLogoOnCreate: true,
+            };
+
+            this.logo = this.add.image(
+              this.scale.width / 2,
+              this.scale.height / 2,
+              "logo"
+            );
+            this.logo.setDepth(100);
+            this.logo.setAlpha(1);
+            this.logo.setScale(1);
+
+            this.tweens.add({
+              targets: this.logo,
+              alpha: { from: 0, to: 1 },
+              duration: 100,
+            });
+
             this.restartSound.play();
+
+            // Delay actual scene restart so logo appears first
+            this.time.delayedCall(1000, () => {
+              this.scene.restart({ logoFromRestart: true });
+            });
           });
 
           // Game setup
