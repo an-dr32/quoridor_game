@@ -175,6 +175,8 @@
       const WALL_THICKNESS = 10;
       const MAX_WALLS = 10;
 
+      let firstLoad = true;
+
       let bgMusic = null;
       let menuIntroMusic = null;
       let allTracks = [];
@@ -208,7 +210,7 @@
         }
 
         create(data) {
-          if (data.logoFromRestart) {
+          if (firstLoad || (data && data.logoFromRestart)) {
             this.logo = this.add.image(
               this.scale.width / 2,
               this.scale.height / 2,
@@ -222,11 +224,13 @@
               targets: this.logo,
               alpha: 0,
               duration: 400,
-              delay: 600, // finishes fading out ~1s after restart
+              delay: 600,
               onComplete: () => {
                 this.logo.destroy();
               },
             });
+
+            firstLoad = false; // prevent showing logo on future non-restart scene calls
           }
 
           this.moveSound = this.sound.add("moveSound", {
