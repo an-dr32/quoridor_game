@@ -151,7 +151,7 @@
         <br />
         - Click a wall position to place it. <br />- Press "P" to change the
         soundtrack. <br />- Press "M" to mute/unmute the music. <br />- Press
-        "ESC" to restart the game.
+        "ESC" or "R" to restart the game.
       </div>
     </div>
 
@@ -335,7 +335,7 @@
           });
 
           //ESC key to restart the game
-          this.input.keyboard.on("keydown-ESC", () => {
+          this.input.keyboard.on("keydown-ESC" && "keydown-R", () => {
             // Create the splash logo BEFORE restarting
             this.logoData = {
               showLogoOnCreate: true,
