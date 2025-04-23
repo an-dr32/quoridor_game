@@ -476,20 +476,32 @@
             // Store preview coords
             this.pendingWallPlacement = { x, y };
           });
-          this.input.on("pointerdown", () => {
+          this.input.on("pointerdown", (pointer) => {
             this.isPointerDown = true;
-            if (this.wallMode && this.pendingWallPlacement) {
-              this.readyToPlaceWall = true;
-            }
+            this.touchStart = {
+              x: pointer.x,
+              y: pointer.y,
+              time: this.time.now,
+            };
           });
 
-          this.input.on("pointerup", () => {
+          this.input.on("pointerup", (pointer) => {
             this.isPointerDown = false;
+
+            const tapDistance = Phaser.Math.Distance.Between(
+              pointer.x,
+              pointer.y,
+              this.touchStart?.x ?? 0,
+              this.touchStart?.y ?? 0
+            );
+            const tapDuration = this.time.now - (this.touchStart?.time ?? 0);
+
+            const isTouchTap = tapDistance < 10 && tapDuration < 300;
 
             if (
               this.wallMode &&
               this.pendingWallPlacement &&
-              this.readyToPlaceWall
+              (this.readyToPlaceWall || isTouchTap)
             ) {
               const { x, y } = this.pendingWallPlacement;
               const placed = this.placeWall(x, y);
@@ -503,7 +515,6 @@
               }
             }
 
-            // Reset for next interaction
             this.pendingWallPlacement = null;
             this.readyToPlaceWall = false;
           });
