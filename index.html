@@ -6,6 +6,11 @@
     <title>GridPath: A Quoridor Clone</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
     <style>
+      html,
+      body {
+        height: 100%;
+      }
+
       body {
         margin: 0;
         background-size: cover;
@@ -15,6 +20,8 @@
         color: white;
         min-height: 100vh;
         display: grid;
+        grid-template-rows: auto 1fr auto; /* header | main layout | footer */
+
         flex-direction: column;
         overflow: hidden;
       }
@@ -46,7 +53,6 @@
       header {
         text-align: center;
         font-family: Consolas, monospace bolder;
-        margin-bottom: -120px;
         margin-top: 0px;
         color: #00ffcc;
         font-size: 2.5rem;
@@ -57,6 +63,8 @@
         background-size: contain;
         width: 1024px;
         height: 225px;
+        display: flex;
+        justify-content: center;
         text-indent: -9999px;
         overflow: hidden;
         white-space: nowrap;
@@ -69,10 +77,14 @@
         display: flex;
         flex-grow: 1;
         justify-content: center;
-        align-items: flex-start;
-        gap: 40px;
+        align-items: center;
+        gap: 0;
         padding: 20px;
         flex-wrap: wrap;
+        height: 100%; /* allow it to expand in the flex container */
+        width: 105%; /* allow it to expand in the flex container */
+
+        box-sizing: border-box; /* Fill full vertical space */
       }
 
       /* Canvas area */
@@ -82,6 +94,13 @@
         align-items: center;
       }
 
+      .canvas-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
       /* Phaser canvas style */
       canvas {
         box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6);
@@ -89,30 +108,42 @@
         padding: 18px;
         border-radius: 8px;
       }
-      #turnIndicator {
-        color: white;
-        font-family: sans-serif;
-        font-size: 20px;
-        padding: 10px;
-        position: absolute;
-        top: 0;
-        left: 0;
-        z-index: 1;
-        background-color: rgba(0, 0, 0, 0.5);
-        white-space: pre-line;
-      }
+
+      #turnIndicator,
       #instructions {
-        color: white;
         font-family: sans-serif;
+        background-color: rgba(0, 0, 0, 0);
+        color: white;
+        padding: 30px;
+        border-radius: 8px;
+        max-width: 260px;
         font-size: 16px;
-        padding: 10px;
-        position: absolute;
-        top: 0;
-        right: 0;
-        z-index: 1;
-        background-color: rgba(0, 0, 0, 0.5);
-        white-space: pre-line;
-        max-width: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: left;
+        height: fit-content;
+      }
+
+      #turnIndicator {
+        justify-content: flex-end;
+      }
+
+      #instructions {
+        justify-content: flex-start;
+      }
+      @media (max-width: 768px) {
+        .layout {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        #turnIndicator,
+        #instructions {
+          max-width: 90vw;
+          justify-content: center;
+          text-align: center;
+        }
       }
 
       .site-footer {
@@ -143,15 +174,22 @@
     <header>
       <h1 class="logo">GridPath: A Quoridor Clone</h1>
     </header>
-    <div id="turnIndicator">Current Turn: Player 1</div>
-    <div id="instructions">
-      <div>
-        Instructions: <br />- Click a cell to move. <br />- Press "W" to enter
-        wall placement mode. <br />- Press "V" to switch wall orientation.
-        <br />
-        - Click a wall position to place it. <br />- Press "P" to change the
-        soundtrack. <br />- Press "M" to mute/unmute the music. <br />- Press
-        "ESC" or "R" to restart the game.
+    <div class="layout">
+      <div class="side-column" id="turnIndicator">Current Turn: Player 1</div>
+
+      <div class="canvas-wrapper">
+        <div id="game-container"></div>
+      </div>
+
+      <div id="instructions">
+        <div>
+          Instructions: <br />- Click a cell to move. <br />- Press "W" to enter
+          wall placement mode. <br />- Press "V" to switch wall orientation.
+          <br />
+          - Click a wall position to place it. <br />- Press "P" to change the
+          soundtrack. <br />- Press "M" to mute/unmute the music. <br />- Press
+          "ESC" or "R" to restart the game.
+        </div>
       </div>
     </div>
 
@@ -338,34 +376,14 @@
             }
           });
 
-          //ESC key to restart the game
-          this.input.keyboard.on("keydown-ESC" && "keydown-R", () => {
-            // Create the splash logo BEFORE restarting
-            this.logoData = {
-              showLogoOnCreate: true,
-            };
-
-            this.logo = this.add.image(
-              this.scale.width / 2,
-              this.scale.height / 2,
-              "logo"
-            );
-            this.logo.setDepth(100);
-            this.logo.setAlpha(1);
-            this.logo.setScale(1);
-
-            this.tweens.add({
-              targets: this.logo,
-              alpha: { from: 0, to: 1 },
-              duration: 100,
-            });
-
-            this.restartSound.play();
-
-            // Delay actual scene restart so logo appears first
-            this.time.delayedCall(1000, () => {
-              this.scene.restart({ logoFromRestart: true });
-            });
+          // Restart switch
+          this.input.keyboard.on("keydown", (event) => {
+            switch (event.code) {
+              case "Escape":
+              case "KeyR":
+                this.handleRestart();
+                break;
+            }
           });
 
           // Game setup
@@ -554,6 +572,30 @@
                 targets[0].x = centerX;
               },
             });
+          });
+        }
+        handleRestart() {
+          this.logoData = { showLogoOnCreate: true };
+
+          this.logo = this.add.image(
+            this.scale.width / 2,
+            this.scale.height / 2,
+            "logo"
+          );
+          this.logo.setDepth(100);
+          this.logo.setAlpha(1);
+          this.logo.setScale(1);
+
+          this.tweens.add({
+            targets: this.logo,
+            alpha: { from: 0, to: 1 },
+            duration: 100,
+          });
+
+          this.restartSound.play();
+
+          this.time.delayedCall(1000, () => {
+            this.scene.restart({ logoFromRestart: true });
           });
         }
 
