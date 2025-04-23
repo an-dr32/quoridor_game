@@ -233,6 +233,10 @@
             firstLoad = false; // prevent showing logo on future non-restart scene calls
           }
 
+          this.isPointerDown = false; // Track pointer state
+          this.pendingWallPlacement = null; // Track pending wall placement
+          this.readyToPlaceWall = false; // Track if wall placement is ready
+
           this.moveSound = this.sound.add("moveSound", {
             loop: false,
             volume: 1,
@@ -429,20 +433,18 @@
                 : `${x},${y + 1},V`;
 
             if (x < 0 || y < 0 || x >= GRID_SIZE - 1 || y >= GRID_SIZE - 1) {
-              if (this.ghostWall) {
-                this.ghostWall.setAlpha(0);
-              }
+              if (this.ghostWall) this.ghostWall.setAlpha(0);
+              this.pendingWallPlacement = null;
               return;
             }
 
-            // Don't allow placing on top of other walls
             if (this.wallMap.has(key) || this.wallMap.has(adjacentKey)) {
-              if (this.ghostWall) {
-                this.ghostWall.setAlpha(0);
-              }
+              if (this.ghostWall) this.ghostWall.setAlpha(0);
+              this.pendingWallPlacement = null;
               return;
             }
 
+            // Draw ghost wall
             if (!this.ghostWall) {
               this.ghostWall = this.add.rectangle(
                 0,
@@ -451,7 +453,7 @@
                 0,
                 this.wallColors[this.currentPlayer]
               );
-              this.ghostWall.setAlpha(0.6);
+              this.ghostWall.setAlpha(0.4);
             }
 
             if (this.wallOrientation === "H") {
@@ -470,6 +472,40 @@
 
             this.ghostWall.setFillStyle(this.wallColors[this.currentPlayer]);
             this.ghostWall.setAlpha(0.4);
+
+            // Store preview coords
+            this.pendingWallPlacement = { x, y };
+          });
+          this.input.on("pointerdown", () => {
+            this.isPointerDown = true;
+            if (this.wallMode && this.pendingWallPlacement) {
+              this.readyToPlaceWall = true;
+            }
+          });
+
+          this.input.on("pointerup", () => {
+            this.isPointerDown = false;
+
+            if (
+              this.wallMode &&
+              this.pendingWallPlacement &&
+              this.readyToPlaceWall
+            ) {
+              const { x, y } = this.pendingWallPlacement;
+              const placed = this.placeWall(x, y);
+
+              if (placed) {
+                this.wallMode = false;
+                this.currentPlayer = 1 - this.currentPlayer;
+                this.updateTurnIndicator();
+                this.highlightMovableCells();
+                this.wallSound.play();
+              }
+            }
+
+            // Reset for next interaction
+            this.pendingWallPlacement = null;
+            this.readyToPlaceWall = false;
           });
 
           // Mark game as started
@@ -637,6 +673,8 @@
         }
 
         handleClick(pointer, gameObject) {
+          if (this.wallMode) return; // prevent wall placement via click here
+
           // Calculate which tile was clicked using pointer position
           const targetX = Math.floor(pointer.x / CELL_SIZE);
           const targetY = Math.floor(pointer.y / CELL_SIZE);
