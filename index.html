@@ -23,8 +23,10 @@
         grid-template-rows: auto 1fr auto; /* header | main layout | footer */
 
         flex-direction: column;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
       }
+      
       body::before {
         content: "";
         position: fixed;
