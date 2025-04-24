@@ -72,6 +72,29 @@
         display: block;
       }
 
+      .wall-counts {
+        display: flex;
+        justify-content: space-around;
+        margin: 10px 0;
+        padding: 0 20px;
+        font-size: 18px;
+        color: white;
+      }
+
+      .wall-bar {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .wall-unit {
+        width: 20px;
+        height: 20px;
+        background-color: #00ffcc;
+        border: 1px solid #fff;
+        border-radius: 2px;
+      }
+
       /* Layout between canvas and instructions */
       .layout {
         display: flex;
@@ -127,6 +150,7 @@
 
       #turnIndicator {
         justify-content: flex-end;
+        opacity: 0;
       }
 
       #instructions {
@@ -174,6 +198,10 @@
     <header>
       <h1 class="logo">GridPath: A Quoridor Clone</h1>
     </header>
+    <div class="wall-counts">
+      <div id="player1Walls" class="wall-bar">Player 1 Walls:</div>
+      <div id="player2Walls" class="wall-bar">Player 2 Walls:</div>
+    </div>
     <div class="layout">
       <div class="side-column" id="turnIndicator">Current Turn: Player 1</div>
 
@@ -183,21 +211,20 @@
 
       <div id="instructions">
         <div>
-          Instructions: <br /><strong>Reach the side with your color.</strong><br /> <br />- Click on a highlighted square to move. <br />-
-          Press "W" to enter wall placement mode and prevent your enemy from
-          advancing. <br />- Press "V" to switch between horizontal and vertical
-          wall orientation.
+          Instructions: <br /><strong>Reach the side with your color.</strong
+          ><br />
+          <br />- Click on a highlighted square to move. <br />- Press "W" to
+          enter wall placement mode and prevent your enemy from advancing.
+          <br />- Press "V" to switch between horizontal and vertical wall
+          orientation.
           <br />
-          - Click on a highlighted wall position to place it. (If it flashes, it's not a valid move) <br />- Press "P"
-          to change the soundtrack. <br />- Press "M" to mute/unmute the music.
-          <br />- Press "ESC" or "R" to restart the game.
+          - Click on a highlighted wall position to place it. (If it flashes,
+          it's not a valid move) <br />- Press "P" to change the soundtrack.
+          <br />- Press "M" to mute/unmute the music. <br />- Press "ESC" or "R"
+          to restart the game.
         </div>
       </div>
     </div>
-
-    <section class="canvas-wrapper">
-      <div id="game-container"></div>
-    </section>
 
     <footer class="site-footer">
       <p>
@@ -516,6 +543,36 @@
             this.ghostWall.setAlpha(0.4);
             this.pendingWallPlacement = { x, y };
           });
+
+          this.renderWallBars = () => {
+            const updateWallBar = (elementId, count, color) => {
+              const container = document.getElementById(elementId);
+              container.innerHTML = `Player ${
+                elementId === "player1Walls" ? 1 : 2
+              } Walls: `;
+              for (let i = 0; i < count; i++) {
+                const unit = document.createElement("div");
+                unit.className = "wall-unit";
+                unit.style.backgroundColor =
+                  Phaser.Display.Color.IntegerToColor(color).rgba;
+                container.appendChild(unit);
+              }
+            };
+
+            updateWallBar(
+              "player1Walls",
+              this.wallCounts[0],
+              this.wallColors[0]
+            );
+            updateWallBar(
+              "player2Walls",
+              this.wallCounts[1],
+              this.wallColors[1]
+            );
+          };
+
+          // ✅ Now call it
+          this.renderWallBars();
 
           this.input.on("pointerdown", (pointer) => {
             this.isPointerDown = true;
@@ -939,6 +996,7 @@
 
           this.walls.push(wall);
           this.wallCounts[this.currentPlayer]--;
+          this.renderWallBars(); // inside placeWall()
           return true;
           console.log("Trying to place wall at", x, y);
           console.log("Player 1 at:", this.pawns[0].x, this.pawns[0].y);
