@@ -6,9 +6,25 @@
     <title>GridPath: A Quoridor Clone</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
     <style>
+      @font-face {
+        font-family: "returnofganon";
+        src: url("assets/fonts/returnofganon.woff2") format("woff2"),
+          url("assets/fonts/returnofganon.woff") format("woff");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+
       html,
       body {
         height: 100%;
+      }
+      body,
+      .wall-bar,
+      #turnIndicator,
+      #instructions {
+        font-family: "returnofganon", Consolas, monospace;
+        font-size: 28px;
       }
 
       body {
@@ -26,7 +42,7 @@
         overflow-y: auto;
         overflow-x: hidden;
       }
-      
+
       body::before {
         content: "";
         position: fixed;
@@ -139,10 +155,12 @@
         font-family: sans-serif;
         background-color: rgba(0, 0, 0, 0);
         color: white;
-        padding: 30px;
+        padding: 35px;
         border-radius: 8px;
         max-width: 260px;
-        font-size: 16px;
+        font-size: 15px;
+        line-height: 20px;
+
         display: flex;
         align-items: center;
         justify-content: center;
@@ -365,7 +383,8 @@
 
           this.trackLabel = this.add
             .text(centerX, centerY, selectedTrack.name, {
-              fontSize: "14px",
+              fontFamily: "returnofganon",
+              fontSize: "25px",
               fill: "#aaa",
               backgroundColor: "#00000088",
               padding: { x: 10, y: 5 },
@@ -1116,7 +1135,8 @@
           // 5. Text
           const msg = this.add
             .text(0, -30, `Player ${player} wins!`, {
-              fontSize: "24px",
+              fontFamily: "returnofganon",
+              fontSize: "28px",
               color: "#fff",
               fontStyle: "bold",
             })
@@ -1126,7 +1146,8 @@
           // 6. Restart button
           const btn = this.add
             .text(0, 30, "Restart", {
-              fontSize: "20px",
+              fontFamily: "returnofganon",
+              fontSize: "24px",
               color: "#ffffff",
               backgroundColor: "#32a852",
               padding: { x: 12, y: 6 },
@@ -1139,6 +1160,7 @@
             if (this.victoryMusic) {
               this.victoryMusic.stop();
               this.victoryMusic.destroy();
+              this.wallSound.play();
               this.victoryMusic = null;
             }
 
