@@ -289,6 +289,7 @@
           this.load.audio("bgMusic7", "assets/sounds/bgSoundtrack7.mp3");
           this.load.audio("bgMusic8", "assets/sounds/bgSoundtrack8.mp3");
 
+          this.load.audio("keyboardSound", "assets/sounds/key.mp3");
           this.load.audio("moveSound", "assets/sounds/movement.mp3");
           this.load.audio("wallSound", "assets/sounds/wall.mp3");
           this.load.audio("invalidSound", "assets/sounds/invalid.mp3");
@@ -326,6 +327,10 @@
           this.pendingWallPlacement = null; // Track pending wall placement
           this.readyToPlaceWall = false; // Track if wall placement is ready
 
+          this.keySound = this.sound.add("keyboardSound", {
+            loop: false,
+            volume: 1,
+          });
           this.moveSound = this.sound.add("moveSound", {
             loop: false,
             volume: 1,
@@ -1219,15 +1224,19 @@
             if (this.cursors.left.isDown) {
               this.tryMoveSelector(-1, 0);
               this.moveCooldown = 150;
+              this.keySound.play();
             } else if (this.cursors.right.isDown) {
               this.tryMoveSelector(1, 0);
               this.moveCooldown = 150;
+              this.keySound.play();
             } else if (this.cursors.up.isDown) {
               this.tryMoveSelector(0, -1);
               this.moveCooldown = 150;
+              this.keySound.play();
             } else if (this.cursors.down.isDown) {
               this.tryMoveSelector(0, 1);
               this.moveCooldown = 150;
+              this.keySound.play();
             }
           }
         }
