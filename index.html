@@ -460,6 +460,32 @@
           this.updateTurnIndicator();
           this.highlightMovableCells();
 
+          // New: Selector setup
+          this.selector = this.add.rectangle(
+            0,
+            0,
+            CELL_SIZE,
+            CELL_SIZE,
+            this.wallColors[this.currentPlayer],
+            0.4
+          );
+          this.selector.setStrokeStyle(2, 0xffffff);
+          this.selector.setDepth(2);
+          this.selectorVisible = true;
+          this.moveCooldown = 0;
+
+          this.selector.gridX = this.pawns[this.currentPlayer].x;
+          this.selector.gridY = this.pawns[this.currentPlayer].y;
+          this.updateSelectorPosition();
+
+          // Movement keys
+          this.cursors = this.input.keyboard.createCursorKeys();
+
+          // Confirm key
+          this.input.keyboard.on("keydown-SPACE", () => {
+            this.handleSelectorAction();
+          });
+
           this.input.on("gameobjectdown", this.handleClick, this);
 
           this.input.keyboard.on("keydown-W", () => {
@@ -475,11 +501,13 @@
               this.clearHighlights();
             }
             this.updateTurnIndicator();
+            this.updateSelectorPosition();
           });
 
           this.input.keyboard.on("keydown-V", () => {
             if (this.wallMode) {
               this.wallOrientation = this.wallOrientation === "H" ? "V" : "H";
+              this.updateGhostWall();
               this.updateTurnIndicator();
             }
           });
@@ -1174,6 +1202,221 @@
             duration: 600,
             ease: "Power2",
           });
+        }
+        update(time, delta) {
+          if (!this.selectorVisible) return;
+
+          // Always decrease cooldown
+          if (this.moveCooldown > 0) {
+            this.moveCooldown -= delta;
+            if (this.moveCooldown < 0) {
+              this.moveCooldown = 0;
+            }
+          }
+
+          // Only allow move if cooldown has expired
+          if (this.moveCooldown === 0) {
+            if (this.cursors.left.isDown) {
+              this.tryMoveSelector(-1, 0);
+              this.moveCooldown = 150;
+            } else if (this.cursors.right.isDown) {
+              this.tryMoveSelector(1, 0);
+              this.moveCooldown = 150;
+            } else if (this.cursors.up.isDown) {
+              this.tryMoveSelector(0, -1);
+              this.moveCooldown = 150;
+            } else if (this.cursors.down.isDown) {
+              this.tryMoveSelector(0, 1);
+              this.moveCooldown = 150;
+            }
+          }
+        }
+
+        // Move selector
+        tryMoveSelector(dx, dy) {
+          if (this.wallMode) {
+            // Wall mode: free movement
+            const newX = this.selector.gridX + dx;
+            const newY = this.selector.gridY + dy;
+            if (
+              newX >= 0 &&
+              newY >= 0 &&
+              newX < GRID_SIZE &&
+              newY < GRID_SIZE
+            ) {
+              this.selector.gridX = newX;
+              this.selector.gridY = newY;
+              this.updateSelectorPosition();
+            }
+          } else {
+            // Move mode: flexible search
+            const currentX = this.selector.gridX;
+            const currentY = this.selector.gridY;
+
+            let closest = null;
+            let closestDist = Infinity;
+
+            for (const h of this.gridHighlights) {
+              const diffX = h.x - currentX;
+              const diffY = h.y - currentY;
+
+              // Only consider squares generally in the pressed direction
+              if (
+                (dx === -1 && diffX >= 0) || // left: ignore right
+                (dx === 1 && diffX <= 0) || // right: ignore left
+                (dy === -1 && diffY >= 0) || // up: ignore down
+                (dy === 1 && diffY <= 0) // down: ignore up
+              ) {
+                continue;
+              }
+
+              const dist = Math.abs(diffX) + Math.abs(diffY); // Manhattan distance
+
+              if (dist < closestDist) {
+                closestDist = dist;
+                closest = h;
+              }
+            }
+
+            if (closest) {
+              this.selector.gridX = closest.x;
+              this.selector.gridY = closest.y;
+              this.updateSelectorPosition();
+            }
+          }
+        }
+
+        updateSelectorPosition() {
+          if (!this.wallMode) {
+            this.selector.setVisible(true);
+            this.selector.x = this.selector.gridX * CELL_SIZE + CELL_SIZE / 2;
+            this.selector.y = this.selector.gridY * CELL_SIZE + CELL_SIZE / 2;
+            this.selector.setFillStyle(
+              this.wallColors[this.currentPlayer],
+              0.4
+            );
+          } else {
+            this.selector.setVisible(false);
+          }
+
+          if (this.wallMode) {
+            this.updateGhostWall();
+          }
+        }
+
+        updateGhostWall() {
+          const x = this.selector.gridX;
+          const y = this.selector.gridY;
+
+          if (x < 0 || y < 0 || x >= GRID_SIZE - 1 || y >= GRID_SIZE - 1) {
+            if (this.ghostWall) this.ghostWall.setAlpha(0);
+            return;
+          }
+
+          const key = `${x},${y},${this.wallOrientation}`;
+          const adjacentKey =
+            this.wallOrientation === "H"
+              ? `${x + 1},${y},H`
+              : `${x},${y + 1},V`;
+
+          const isInvalid =
+            this.wallMap.has(key) || this.wallMap.has(adjacentKey);
+
+          if (!this.ghostWall) {
+            this.ghostWall = this.add.rectangle(
+              0,
+              0,
+              0,
+              0,
+              this.wallColors[this.currentPlayer]
+            );
+            this.ghostWall.setAlpha(0.4);
+            this.ghostWall.setDepth(1.5);
+          }
+
+          if (this.wallOrientation === "H") {
+            this.ghostWall.setSize(CELL_SIZE * 2, WALL_THICKNESS);
+            this.ghostWall.setPosition(
+              x * CELL_SIZE + CELL_SIZE,
+              y * CELL_SIZE + CELL_SIZE - WALL_THICKNESS / 2
+            );
+          } else {
+            this.ghostWall.setSize(WALL_THICKNESS, CELL_SIZE * 2);
+            this.ghostWall.setPosition(
+              x * CELL_SIZE + CELL_SIZE - WALL_THICKNESS / 2,
+              y * CELL_SIZE + CELL_SIZE
+            );
+          }
+
+          this.ghostWall.setFillStyle(this.wallColors[this.currentPlayer]);
+
+          if (isInvalid) {
+            this.ghostWall.setAlpha(0.2); // Make it flashier that it's wrong
+          } else {
+            this.ghostWall.setAlpha(0.4);
+          }
+        }
+
+        // Action when pressing Space
+        handleSelectorAction() {
+          if (this.wallMode) {
+            const x = this.selector.gridX;
+            const y = this.selector.gridY;
+            const placed = this.placeWall(x, y);
+
+            if (placed) {
+              this.wallMode = false;
+              this.currentPlayer = 1 - this.currentPlayer;
+              this.updateTurnIndicator();
+              this.highlightMovableCells();
+              this.selector.gridX = this.pawns[this.currentPlayer].x;
+              this.selector.gridY = this.pawns[this.currentPlayer].y;
+              this.updateSelectorPosition();
+              this.wallSound.play();
+            } else {
+              this.playInvalidSoundOnce();
+            }
+          } else {
+            // Move player
+            const targetX = this.selector.gridX;
+            const targetY = this.selector.gridY;
+
+            const isHighlighted = this.gridHighlights.some(
+              (h) => h.x === targetX && h.y === targetY
+            );
+            if (!isHighlighted) {
+              this.playInvalidSoundOnce();
+              return;
+            }
+
+            const player = this.pawns[this.currentPlayer];
+            if (this.isWallBetween(player.x, player.y, targetX, targetY))
+              return;
+
+            player.x = targetX;
+            player.y = targetY;
+            player.sprite.setPosition(
+              targetX * CELL_SIZE + CELL_SIZE / 2,
+              targetY * CELL_SIZE + CELL_SIZE / 2
+            );
+            this.moveSound.play();
+
+            if (
+              (this.currentPlayer === 0 && targetY === GRID_SIZE - 1) ||
+              (this.currentPlayer === 1 && targetY === 0)
+            ) {
+              this.showVictory(this.currentPlayer + 1);
+              return;
+            }
+
+            this.currentPlayer = 1 - this.currentPlayer;
+            this.wallMode = false;
+            this.updateTurnIndicator();
+            this.highlightMovableCells();
+            this.selector.gridX = this.pawns[this.currentPlayer].x;
+            this.selector.gridY = this.pawns[this.currentPlayer].y;
+            this.updateSelectorPosition();
+          }
         }
       }
 
