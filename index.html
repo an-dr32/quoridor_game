@@ -269,13 +269,81 @@
       let allTracks = [];
       let currentTrackIndex = 0;
       let musicMuted = false;
-
-      class QuoridorScene extends Phaser.Scene {
+      class PreloaderScene extends Phaser.Scene {
         constructor() {
-          super("QuoridorScene");
+          super("PreloaderScene");
         }
 
         preload() {
+          const { width, height } = this.scale; // Get the canvas dimensions
+
+          // Create "Loading..." text
+          const loadingText = this.add.text(
+            width / 2,
+            height / 2 - 50, // Move it slightly above center
+            "Loading...",
+            {
+              fontFamily: "Consolas, monospace",
+              fontSize: "32px",
+              fill: "#fbd763",
+            }
+          );
+          loadingText.setOrigin(0.5);
+
+          // Centered Progress Box
+          const progressBoxWidth = 320;
+          const progressBoxHeight = 50;
+          const progressBarWidth = 300;
+          const progressBarHeight = 30;
+
+          const progressBox = this.add.graphics();
+          progressBox.fillStyle(0x222222, 0.8);
+          progressBox.fillRect(
+            width / 2 - progressBoxWidth / 2,
+            height / 2 - progressBoxHeight / 2,
+            progressBoxWidth,
+            progressBoxHeight
+          );
+
+          const progressBar = this.add.graphics();
+
+          this.load.on("progress", (value) => {
+            progressBar.clear();
+
+            // Calculate interpolated color based on progress
+            const startColor = Phaser.Display.Color.ValueToColor(0xf94b5c);
+            const endColor = Phaser.Display.Color.ValueToColor(0xfbd763);
+
+            const interpolatedColor =
+              Phaser.Display.Color.Interpolate.ColorWithColor(
+                startColor,
+                endColor,
+                100,
+                value * 100
+              );
+
+            const fillColor = Phaser.Display.Color.GetColor(
+              interpolatedColor.r,
+              interpolatedColor.g,
+              interpolatedColor.b
+            );
+
+            progressBar.fillStyle(fillColor, 1);
+            progressBar.fillRect(
+              width / 2 - progressBarWidth / 2,
+              height / 2 - progressBarHeight / 2,
+              progressBarWidth * value,
+              progressBarHeight
+            );
+
+            loadingText.setText(`Loading... ${parseInt(value * 100)}%`);
+          });
+
+          this.load.on("complete", () => {
+            // Once all assets are loaded, start the real game
+            this.scene.start("QuoridorScene");
+          });
+
           // Load images
           this.load.image("logo", "assets/images/logo.png");
 
@@ -342,6 +410,14 @@
             "assets/sounds/victory.mp3",
           ]);
         }
+      }
+
+      class QuoridorScene extends Phaser.Scene {
+        constructor() {
+          super("QuoridorScene");
+        }
+
+        preload() {}
 
         create(data) {
           if (firstLoad || (data && data.logoFromRestart)) {
@@ -1559,7 +1635,7 @@
         parent: "game-container", // Add this line to mount canvas into the right spot
 
         backgroundColor: "#1d1d1d",
-        scene: QuoridorScene,
+        scene: [PreloaderScene, QuoridorScene],
       };
 
       //new Phaser.Game(config);
