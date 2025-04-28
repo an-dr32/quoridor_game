@@ -906,6 +906,11 @@
           });
         }
         handleRestart() {
+          if (this.victoryMusic) {
+            this.victoryMusic.stop();
+            this.victoryMusic.destroy();
+            this.victoryMusic = null;
+          }
           this.logoData = { showLogoOnCreate: true };
 
           this.logo = this.add.image(
@@ -1316,12 +1321,6 @@
           } (${this.wallOrientation})`;
         }
 
-        // Show victory message modal
-        /* showVictory(player) {
-          alert(`Player ${player} wins!`);
-          location.reload();
-        } */
-
         showVictory(player) {
           const W = GRID_SIZE * CELL_SIZE;
           const H = GRID_SIZE * CELL_SIZE;
@@ -1396,6 +1395,26 @@
               this.victoryMusic = null;
             }
 
+            this.scene.restart();
+          });
+
+          this.input.keyboard.once("keydown-ENTER", () => {
+            if (this.victoryMusic) {
+              this.victoryMusic.stop();
+              this.victoryMusic.destroy();
+              this.wallSound.play();
+              this.victoryMusic = null;
+            }
+            this.scene.restart();
+          });
+
+          this.input.keyboard.once("keydown-SPACE", () => {
+            if (this.victoryMusic) {
+              this.victoryMusic.stop();
+              this.victoryMusic.destroy();
+              this.wallSound.play();
+              this.victoryMusic = null;
+            }
             this.scene.restart();
           });
 
@@ -1632,7 +1651,7 @@
         type: Phaser.AUTO,
         width: GRID_SIZE * CELL_SIZE,
         height: GRID_SIZE * CELL_SIZE,
-        parent: "game-container", // Add this line to mount canvas into the right spot
+        parent: "game-container",
 
         backgroundColor: "#1d1d1d",
         scene: [PreloaderScene, QuoridorScene],
