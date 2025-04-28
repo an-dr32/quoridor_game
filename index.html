@@ -280,21 +280,22 @@
           this.load.image("logo", "assets/images/logo.png");
 
           // Soundtrack Music
-          this.load.audio("bgMusic", "assets/sounds/bgSoundtrack1.mp3");
-          this.load.audio("bgMusic2", "assets/sounds/bgSoundtrack2.mp3");
-          this.load.audio("bgMusic3", "assets/sounds/bgSoundtrack3.mp3");
-          this.load.audio("bgMusic4", "assets/sounds/bgSoundtrack4.mp3");
-          this.load.audio("bgMusic5", "assets/sounds/bgSoundtrack5.mp3");
-          this.load.audio("bgMusic6", "assets/sounds/bgSoundtrack6.mp3");
-          this.load.audio("bgMusic7", "assets/sounds/bgSoundtrack7.mp3");
-          this.load.audio("bgMusic8", "assets/sounds/bgSoundtrack8.mp3");
+          this.load.audio("bgMusic1", "assets/sounds/bgMusic1.ogg");
+          this.load.audio("bgMusic2", "assets/sounds/bgMusic2.ogg");
+          this.load.audio("bgMusic3", "assets/sounds/bgMusic3.ogg");
+          this.load.audio("bgMusic4", "assets/sounds/bgMusic4.ogg");
+          this.load.audio("bgMusic5", "assets/sounds/bgMusic5.ogg");
+          this.load.audio("bgMusic6", "assets/sounds/bgMusic6.ogg");
+          this.load.audio("bgMusic7", "assets/sounds/bgMusic7.ogg");
+          this.load.audio("bgMusic8", "assets/sounds/bgMusic8.ogg");
 
-          this.load.audio("keyboardSound", "assets/sounds/key.mp3");
-          this.load.audio("moveSound", "assets/sounds/movement.mp3");
-          this.load.audio("wallSound", "assets/sounds/wall.mp3");
-          this.load.audio("invalidSound", "assets/sounds/invalid.mp3");
-          this.load.audio("restartSound", "assets/sounds/restart.mp3");
-          this.load.audio("victorySound", "assets/sounds/victory.mp3");
+          this.load.audio("keyboardSound", "assets/sounds/key.ogg");
+          this.load.audio("pluckSound", "assets/sounds/pluck.ogg");
+          this.load.audio("moveSound", "assets/sounds/movement.ogg");
+          this.load.audio("wallSound", "assets/sounds/wall.ogg");
+          this.load.audio("invalidSound", "assets/sounds/invalid.ogg");
+          this.load.audio("restartSound", "assets/sounds/restart.ogg");
+          this.load.audio("victorySound", "assets/sounds/victory.ogg");
         }
 
         create(data) {
@@ -327,6 +328,10 @@
           this.pendingWallPlacement = null; // Track pending wall placement
           this.readyToPlaceWall = false; // Track if wall placement is ready
 
+          this.pluckSound = this.sound.add("pluckSound", {
+            loop: false,
+            volume: 1,
+          });
           this.keySound = this.sound.add("keyboardSound", {
             loop: false,
             volume: 1,
@@ -353,14 +358,14 @@
 
           // Background music setup
           allTracks = [
-            { key: "bgMusic", name: "Tronny" },
-            { key: "bgMusic2", name: "Meditations" },
-            { key: "bgMusic3", name: "ZZ Top - La Grange" },
-            { key: "bgMusic4", name: "ACDC - Shot To Thrill" },
-            { key: "bgMusic5", name: "RoosterVania" },
-            { key: "bgMusic6", name: "Polkasroostinski" },
-            { key: "bgMusic7", name: "Kinda Animeish... PocPooc!!!" },
-            { key: "bgMusic8", name: "Serious" },
+            { key: "bgMusic1", name: "12 12 inst mix ab oz - Mobygratis" },
+            { key: "bgMusic2", name: "1960s 2 house inst ab oz - Mobygratis" },
+            { key: "bgMusic3", name: "asteroid b inst mix ab oz - Mobygratis" },
+            { key: "bgMusic4", name: "bunt poll 102 - Mobygratis" },
+            { key: "bgMusic5", name: "by choice inst mix ab oz - Mobygratis" },
+            { key: "bgMusic6", name: "clef inst mix ab oz - Mobygratis" },
+            { key: "bgMusic7", name: "hafa 126 - Mobygratis" },
+            { key: "bgMusic8", name: "hidden inst mix ab oz - Mobygratis" },
           ];
 
           const savedIndex = localStorage.getItem("selectedTrackIndex");
@@ -400,24 +405,42 @@
             .setDepth(100);
 
           this.input.keyboard.on("keydown-P", () => {
-            // Cycle track
             currentTrackIndex = (currentTrackIndex + 1) % allTracks.length;
             localStorage.setItem("selectedTrackIndex", currentTrackIndex);
 
-            if (bgMusic) {
-              bgMusic.stop();
-              bgMusic.destroy();
-              bgMusic = null;
-            }
-
             const nextTrack = allTracks[currentTrackIndex];
-            bgMusic = this.sound.add(nextTrack.key, {
-              loop: true,
-              volume: musicMuted ? 0 : 1,
-            });
-            bgMusic.play();
 
-            this.showTrackLabel(nextTrack.name);
+            if (this.sound.get(nextTrack.key)) {
+              if (bgMusic) {
+                bgMusic.stop();
+                bgMusic.destroy();
+              }
+              bgMusic = this.sound.add(nextTrack.key, {
+                loop: true,
+                volume: musicMuted ? 0 : 1,
+              });
+              bgMusic.play();
+              this.showTrackLabel(nextTrack.name);
+            } else {
+              // Corrected dynamic loading:
+              this.load.audio(
+                nextTrack.key,
+                `assets/sounds/bgMusic${currentTrackIndex + 1}.ogg`
+              );
+              this.load.once("complete", () => {
+                if (bgMusic) {
+                  bgMusic.stop();
+                  bgMusic.destroy();
+                }
+                bgMusic = this.sound.add(nextTrack.key, {
+                  loop: true,
+                  volume: musicMuted ? 0 : 1,
+                });
+                bgMusic.play();
+                this.showTrackLabel(nextTrack.name);
+              });
+              this.load.start();
+            }
           });
 
           this.input.keyboard.on("keydown-M", () => {
@@ -477,6 +500,11 @@
           this.selector.setStrokeStyle(2, 0xffffff);
           this.selector.setDepth(2);
           this.selectorVisible = true;
+          this.lastWallSelectorPositions = [
+            null, // Player 1
+            null, // Player 2
+          ];
+
           this.moveCooldown = 0;
 
           this.selector.gridX = this.pawns[this.currentPlayer].x;
@@ -486,8 +514,12 @@
           // Movement keys
           this.cursors = this.input.keyboard.createCursorKeys();
 
-          // Confirm key
+          // Confirm keys
           this.input.keyboard.on("keydown-SPACE", () => {
+            this.handleSelectorAction();
+          });
+
+          this.input.keyboard.on("keydown-ENTER", () => {
             this.handleSelectorAction();
           });
 
@@ -495,18 +527,43 @@
 
           this.input.keyboard.on("keydown-W", () => {
             if (this.wallMode) {
+              // ➡️ Leaving wall mode
               this.wallMode = false;
+
+              // Save last wall selector position for the current player
+              this.lastWallSelectorPositions[this.currentPlayer] = {
+                x: this.selector.gridX,
+                y: this.selector.gridY,
+              };
+
               if (this.ghostWall) {
                 this.ghostWall.destroy();
                 this.ghostWall = null;
               }
+
               this.highlightMovableCells();
+
+              // Reset selector back to the pawn position
+              this.selector.gridX = this.pawns[this.currentPlayer].x;
+              this.selector.gridY = this.pawns[this.currentPlayer].y;
+              this.updateSelectorPosition();
             } else if (this.wallCounts[this.currentPlayer] > 0) {
+              // ➡️ Entering wall mode
               this.wallMode = true;
               this.clearHighlights();
+
+              // Restore last wall selector position if it exists for current player
+              const lastPos =
+                this.lastWallSelectorPositions[this.currentPlayer];
+              if (lastPos) {
+                this.selector.gridX = lastPos.x;
+                this.selector.gridY = lastPos.y;
+              }
+              this.updateSelectorPosition();
             }
+            this.pluckSound.play();
+
             this.updateTurnIndicator();
-            this.updateSelectorPosition();
           });
 
           this.input.keyboard.on("keydown-V", () => {
@@ -514,6 +571,7 @@
               this.wallOrientation = this.wallOrientation === "H" ? "V" : "H";
               this.updateGhostWall();
               this.updateTurnIndicator();
+              this.pluckSound.play();
             }
           });
 
@@ -869,9 +927,26 @@
                 CELL_SIZE,
                 CELL_SIZE,
                 this.highlightColors[this.currentPlayer],
-                0.4 // alpha transparency
+                0.4
               );
-              highlight.setDepth(1); // draw on top of grid
+              highlight.setDepth(1);
+              highlight.setInteractive(); // <-- add interactivity!
+
+              // 👉 Handle mouse hover
+              highlight.on("pointerout", () => {
+                highlight.setFillStyle(
+                  this.highlightColors[this.currentPlayer],
+                  0.4
+                );
+              });
+              highlight.on("pointerover", () => {
+                highlight.setFillStyle(
+                  this.highlightColors[this.currentPlayer],
+                  0.8
+                );
+                this.keySound.play();
+              });
+
               this.gridHighlights.push({ x: nx, y: ny, rect: highlight });
             }
           }
@@ -879,6 +954,9 @@
 
         handleClick(pointer, gameObject) {
           if (this.wallMode) return; // prevent wall placement via click here
+
+          // 👉 Hide the keyboard selector when moving by mouse
+          this.selector.setVisible(false);
 
           // Calculate which tile was clicked using pointer position
           const targetX = Math.floor(pointer.x / CELL_SIZE);
