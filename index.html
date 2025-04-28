@@ -382,7 +382,7 @@
           if (!bgMusic || !bgMusic.isPlaying) {
             bgMusic = this.sound.add(selectedTrack.key, {
               loop: true,
-              volume: musicMuted ? 0 : 1,
+              volume: musicMuted ? 0 : 0.5,
             });
             bgMusic.play();
           }
